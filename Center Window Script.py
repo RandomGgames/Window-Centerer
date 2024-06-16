@@ -12,8 +12,6 @@ def keyboard_event(event):
         if all(keyboard.is_pressed(key) for key in ['ctrl', 'shift', 'alt', 'c']):
             center_window()
 
-#center_window()
-
 def center_window():
     logger.debug(f'Centering window...')
     
