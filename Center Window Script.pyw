@@ -1,59 +1,104 @@
-import pyautogui
+import datetime
 import keyboard
-import logging
 import os
+import pathlib
+import pyautogui
+import socket
 import sys
+import time
+import typing
+
+import logging
 logger = logging.getLogger(__name__)
 
-__version__ = '1.0.0'
+"""
+Center Window Script.py
 
-def keyboard_event(event):
-    if event.event_type == 'down':
-        if all(keyboard.is_pressed(key) for key in ['ctrl', 'shift', 'alt', 'c']):
-            center_window()
+This script, when ctrl, shift, alt, and c are all pressed at the same time, moves the active window to the center of the screen.
+"""
 
 def center_window():
     logger.debug(f'Centering window...')
     
     screen_width, screen_height = pyautogui.size()
-    logger.debug(f'{screen_width = }')
-    logger.debug(f'{screen_height = }')
+    logger.debug(f'Screen size: {screen_width}x{screen_height}')
     
     window = pyautogui.getActiveWindow()
     window_width, window_height = window.size
-    logger.debug(f'{window_width = }')
-    logger.debug(f'{window_height = }')
+    logger.debug(f'Window size: {window_width}x{window_height}')
     
     new_x = (screen_width - window_width) // 2
     new_y = (screen_height - window_height) // 2
-    logger.debug(f'{new_x = }')
-    logger.debug(f'{new_y = }')
+    logger.debug(f'New X Y screen position: ({new_x}, {new_y})')
     
+    logger.debug(f'Moving window "{window.title}" to center of screen...')
     pyautogui.getActiveWindow().moveTo(new_x, new_y)
     logger.info(f'Centered window "{window.title}".')
 
+def keyboard_event(event):
+    if event.event_type == 'down':
+        if all(keyboard.is_pressed(key) for key in ['ctrl', 'shift', 'alt', 'c']):
+            logger.debug(f'Center window hotkeys pressed.')
+            center_window()
+
 def main():
+    logger.info(f'Starting new session.')
     keyboard.hook(keyboard_event)
     keyboard.wait()
 
-if __name__ == "__main__":
-    if os.path.exists('latest.log'):
-        open('latest.log', 'w').close()
+def setup_logging(
+        logger: logging.Logger,
+        log_file_path: typing.Union[str, os.fspath],
+        number_of_logs_to_keep: typing.Union[int, None] = None,
+        console_logging_level = logging.DEBUG,
+        file_logging_level = logging.DEBUG,
+        log_message_format = '%(asctime)s.%(msecs)03d [%(name)s] [%(funcName)s] %(levelname)s: %(message)s',
+        date_format = '%Y-%m-%d %H:%M:%S'):
+    # Initialize logs folder
+    log_dir = os.path.dirname(log_file_path)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir) # Create logs dir if it does not exist
     
-    logger.setLevel(logging.DEBUG)
+    # Limit # of logs in logs folder
+    if number_of_logs_to_keep is not None:
+        log_files = sorted([f for f in os.listdir(log_dir) if f.endswith('.log')], key=lambda f: os.path.getmtime(os.path.join(log_dir, f)))
+        if len(log_files) >= number_of_logs_to_keep:
+            for file in log_files[:len(log_files) - number_of_logs_to_keep + 1]:
+                os.remove(os.path.join(log_dir, file))
     
-    file_handler = logging.FileHandler('latest.log', encoding='utf-8')
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03d %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-    logger.addHandler(file_handler)
+    logger.setLevel(file_logging_level)  # Set the overall logging level
     
+    # File Handler for date-based log file
+    file_handler_date = logging.FileHandler(log_file_path, encoding='utf-8')
+    file_handler_date.setLevel(file_logging_level)
+    file_handler_date.setFormatter(logging.Formatter(log_message_format))
+    logger.addHandler(file_handler_date)
+    
+    # Console Handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03d %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+    console_handler.setLevel(console_logging_level)
+    console_handler.setFormatter(logging.Formatter(log_message_format, datefmt=date_format))
     logger.addHandler(console_handler)
     
+    # Set specific logging levels
+    #logging.getLogger('requests').setLevel(logging.INFO)
+    #logging.getLogger('sys').setLevel(logging.CRITICAL)
+    #logging.getLogger('urllib3').setLevel(logging.INFO)
+
+if __name__ == "__main__":
+    pc_name = socket.gethostname()
+    script_name = pathlib.Path(os.path.basename(__file__)).stem
+    log_dir = pathlib.Path(f"{script_name} Logs")
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    log_file_name = pathlib.Path(f'{timestamp}_{pc_name}.log')
+    log_file_path = os.path.join(log_dir, log_file_name)
+    setup_logging(logger, log_file_path, number_of_logs_to_keep=10)
+    
+    error = 0
     try:
         main()
     except Exception as e:
-        logger.exception(f'The script could no longer continue due to {repr(e)}.')
-        exit(1)
+        logger.warning(f'A fatal error has occurred due to {repr(e)}')
+        error = 1
+    finally:
+        exit(error)
