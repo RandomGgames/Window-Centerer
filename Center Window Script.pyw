@@ -1,3 +1,4 @@
+from screeninfo import get_monitors
 import datetime
 import keyboard
 import os
@@ -17,29 +18,67 @@ Center Window Script.py
 This script, when ctrl, shift, alt, and c are all pressed at the same time, moves the active window to the center of the screen.
 """
 
-def center_window():
-    logger.debug(f'Centering window...')
-    
-    screen_width, screen_height = pyautogui.size()
-    logger.debug(f'Screen size: {screen_width}x{screen_height}')
-    
+def get_monitor_for_window(window):
+    """
+    Determine which monitor the window is primarily located in by using its center point.
+    """
+    monitors = get_monitors()
+    monitor_for_window = monitors[0]
+    for monitor in monitors:
+        if monitor.x <= window.centerx < monitor.x + monitor.width and monitor.y <= window.centery < monitor.y + monitor.height:
+            monitor_for_window = monitor
+            break
+    logger.debug(f'Monitor: "{monitor_for_window.name[4:]}" {monitor_for_window.width} x {monitor_for_window.height}')
+    return monitor_for_window
+
+def get_active_window():
+    """
+    Gets the active window
+    """
     window = pyautogui.getActiveWindow()
+    if window:
+        if window.isActive:
+            logger.debug(f'Title: "{window.title}"')
+            logger.debug(f'Window Center: ({window.centerx}, {window.centery})')
+            logger.debug(f'Width x Height = {window.width} x {window.height}')
+            return window
+    logger.warning(f'Could not retrieve active window.')
+    return None
+
+def calculate_new_window_position(window, monitor):
+    """
+    Calculates the position a window needs to be moved to to be in the center of the monitor
+    """
     window_width, window_height = window.size
-    logger.debug(f'Window size: {window_width}x{window_height}')
-    
-    new_x = (screen_width - window_width) // 2
-    new_y = (screen_height - window_height) // 2
+    new_x = monitor.x + (monitor.width - window_width) // 2
+    new_y = monitor.y + (monitor.height - window_height) // 2
     logger.debug(f'New X Y screen position: ({new_x}, {new_y})')
+    return new_x, new_y
+
+def move_window(window, x, y):
+    """
+    Moves a window to the specified X Y coordinates
+    """
+    window.moveTo(x, y)
+    logger.debug(f'Moved window "{window.title}" to ({x}, {y})')
+
+def center_window():
+    window = get_active_window()
+    if window is None: return
     
-    logger.debug(f'Moving window "{window.title}" to center of screen...')
-    pyautogui.getActiveWindow().moveTo(new_x, new_y)
-    logger.info(f'Centered window "{window.title}".')
+    monitor = get_monitor_for_window(window)
+    new_x, new_y = calculate_new_window_position(window, monitor)
+    move_window(window, new_x, new_y)
+    logger.info(f'Centered window.')
 
 def keyboard_event(event):
     if event.event_type == 'down':
         if all(keyboard.is_pressed(key) for key in ['ctrl', 'shift', 'alt', 'c']):
-            logger.debug(f'Center window hotkeys pressed.')
-            center_window()
+            logger.debug(f'Hotkeys pressed.')
+            try:
+                center_window()
+            except Exception as e:
+                logger.debug(f'An error occured while attempting to center the active window: {repr(e)}')
 
 def main():
     logger.info(f'Starting new session.')
@@ -52,7 +91,7 @@ def setup_logging(
         number_of_logs_to_keep: typing.Union[int, None] = None,
         console_logging_level = logging.DEBUG,
         file_logging_level = logging.DEBUG,
-        log_message_format = '%(asctime)s.%(msecs)03d [%(name)s] [%(funcName)s] %(levelname)s: %(message)s',
+        log_message_format = '%(asctime)s.%(msecs)03d %(levelname)s [%(funcName)s]: %(message)s',
         date_format = '%Y-%m-%d %H:%M:%S'):
     # Initialize logs folder
     log_dir = os.path.dirname(log_file_path)
