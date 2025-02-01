@@ -1,11 +1,15 @@
+from PIL import Image, ImageDraw
+from pystray import Icon, MenuItem, Menu
 from screeninfo import get_monitors
 import datetime
 import keyboard
+import logging
 import os
 import pathlib
 import pyautogui
 import socket
 import sys
+import threading
 import time
 import typing
 
@@ -17,6 +21,8 @@ Center Window Script.py
 
 This script, when ctrl, shift, alt, and c are all pressed at the same time, moves the active window to the center of the screen.
 """
+
+exit_event = threading.Event()
 
 def get_monitor_for_window(window):
     """
@@ -63,9 +69,12 @@ def move_window(window, x, y):
     logger.debug(f'Moved window "{window.title}" to ({x}, {y})')
 
 def center_window():
+    """
+    Moves the active window to the center of the monitor the center of the window is located in
+    """
+    logger.info(f'Centering window...')
     window = get_active_window()
     if window is None: return
-    
     monitor = get_monitor_for_window(window)
     new_x, new_y = calculate_new_window_position(window, monitor)
     move_window(window, new_x, new_y)
@@ -74,16 +83,54 @@ def center_window():
 def keyboard_event(event):
     if event.event_type == 'down':
         if all(keyboard.is_pressed(key) for key in ['ctrl', 'shift', 'alt', 'c']):
-            logger.debug(f'Hotkeys pressed.')
             try:
                 center_window()
             except Exception as e:
-                logger.debug(f'An error occured while attempting to center the active window: {repr(e)}')
+                logger.debug(f'An error occurred while attempting to center the active window: {repr(e)}')
+
+# def create_image() -> Image:
+#     logger.debug(f'Creating system tray icon image')
+#     # Create an image for the icon (you can customize it)
+#     image = Image.new('RGB', (64, 64), color=(255, 255, 255))
+#     draw = ImageDraw.Draw(image)
+#     draw.rectangle((0, 0, 64, 64), fill=(0, 0, 0))  # A simple black square
+#     return image
+
+def load_image(path) -> Image:
+    image = Image.open(path)
+    logger.debug(f'Loaded image at path "{path}"')
+    return image
+
+def on_exit(icon, item):
+    logger.debug(f'Exit pressed on system tray icon')
+    icon.stop()
+    logger.debug('System tray icon stopped.')
+    exit_event.set()
+    logger.debug(f'exit event triggered')
+
+def startup_tray_icon():
+    logger.debug(f'Starting up system tray icon')
+    image = load_image('system_tray_icon.png')
+    menu = Menu(MenuItem('Exit', on_exit))
+    icon = Icon('CenterWindowScript', image, menu=menu)
+    logger.debug(f'Started system tray icon')
+    icon.run()
+
+def startup_hotkey_detection():
+    keyboard.hook(keyboard_event)
+    exit_event.wait()
 
 def main():
     logger.info(f'Starting new session.')
-    keyboard.hook(keyboard_event)
-    keyboard.wait()
+    
+    system_tray_thread = threading.Thread(target=startup_tray_icon, daemon=True)
+    system_tray_thread.start()
+    
+    keyboard_thread = threading.Thread(target=startup_hotkey_detection, daemon=True)
+    keyboard_thread.start()
+    
+    exit_event.wait()
+    logger.debug(f'Session closing gracefully.')
 
 def setup_logging(
         logger: logging.Logger,
