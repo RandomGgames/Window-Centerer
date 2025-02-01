@@ -1,3 +1,4 @@
-pyautogui
 keyboard
+pyautogui
+pystray
 screeninfo
