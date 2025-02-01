@@ -88,14 +88,6 @@ def keyboard_event(event):
             except Exception as e:
                 logger.debug(f'An error occurred while attempting to center the active window: {repr(e)}')
 
-# def create_image() -> Image:
-#     logger.debug(f'Creating system tray icon image')
-#     # Create an image for the icon (you can customize it)
-#     image = Image.new('RGB', (64, 64), color=(255, 255, 255))
-#     draw = ImageDraw.Draw(image)
-#     draw.rectangle((0, 0, 64, 64), fill=(0, 0, 0))  # A simple black square
-#     return image
-
 def load_image(path) -> Image:
     image = Image.open(path)
     logger.debug(f'Loaded image at path "{path}"')
