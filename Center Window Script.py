@@ -1,11 +1,15 @@
+from PIL import Image, ImageDraw
+from pystray import Icon, MenuItem, Menu
 from screeninfo import get_monitors
 import datetime
 import keyboard
+import logging
 import os
 import pathlib
 import pyautogui
 import socket
 import sys
+import threading
 import time
 import typing
 
@@ -80,11 +84,46 @@ def keyboard_event(event):
             except Exception as e:
                 logger.debug(f'An error occured while attempting to center the active window: {repr(e)}')
 
+def create_image() -> Image:
+    logger.debug(f'Creating system tray icon image')
+    # Create an image for the icon (you can customize it)
+    image = Image.new('RGB', (64, 64), color=(255, 255, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, 64, 64), fill=(0, 0, 0))  # A simple black square
+    return image
+
+def load_image(path) -> Image:
+    image = Image.open(path)
+    logger.debug(f'Loaded image at path "{path}"')
+    return image
+
+def on_exit(icon, item):
+    icon.stop()
+    logger.debug('System tray icon stopped.')
+
+def setup_tray_icon():
+    logger.debug(f'Starting up system tray icon')
+    image = load_image('system_tray_icon.png')
+    menu = Menu(MenuItem('Exit', on_exit))
+    icon = Icon('CenterWindowScript', image, menu=menu)
+    logger.debug(f'Started system tray icon')
+    icon.run()
+    global exit_flag
+    exit_flag = True
+    logger.debug('Exit flag flagged')
+
 def main():
     logger.info(f'Starting new session.')
+    
+    tray_thread = threading.Thread(target=setup_tray_icon, daemon=True)
+    tray_thread.start()
+    
     keyboard.hook(keyboard_event)
-    keyboard.wait()
-
+    global exit_flag
+    exit_flag = False
+    while not exit_flag:
+        time.sleep(1)
+    
 def setup_logging(
         logger: logging.Logger,
         log_file_path: typing.Union[str, os.fspath],
