@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw
+from PIL import Image
 from pystray import Icon, MenuItem, Menu
 from screeninfo import get_monitors
 import datetime
@@ -10,7 +10,6 @@ import pyautogui
 import socket
 import sys
 import threading
-import time
 import typing
 
 import logging
