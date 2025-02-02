@@ -16,9 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 """
-Center Window Script.py
-
-This script, when ctrl, shift, alt, and c are all pressed at the same time, moves the active window to the center of the screen.
+This script centers the active window into the center of the monitor they are in when CTRL+SHIFT+ALT+C are pressed.
 """
 
 exit_event = threading.Event()
