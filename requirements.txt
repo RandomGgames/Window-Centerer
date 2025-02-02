@@ -1,4 +1,5 @@
 keyboard
+pillow
 pyautogui
 pystray
 screeninfo
