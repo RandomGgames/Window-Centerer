@@ -11,6 +11,7 @@ import socket
 import sys
 import threading
 import typing
+import webbrowser
 
 import logging
 logger = logging.getLogger(__name__)
@@ -97,10 +98,23 @@ def on_exit(icon, item):
     exit_event.set()
     logger.debug(f'exit event triggered')
 
+def open_source_url(icon, item):
+    webbrowser.open("https://github.com/RandomGgames/Window-Centerer")
+    logger.debug('Opened source URL.')
+
+def open_script_folder(icon, item):
+    folder_path = os.path.dirname(os.path.abspath(__file__))
+    os.startfile(folder_path)
+    logger.debug(f'Opened script folder: {folder_path}')
+
 def startup_tray_icon():
     logger.debug(f'Starting up system tray icon')
     image = load_image('system_tray_icon.png')
-    menu = Menu(MenuItem('Exit', on_exit))
+    menu = Menu(
+        MenuItem('Source', open_source_url),
+        MenuItem('Open Folder', open_script_folder),
+        MenuItem('Exit', on_exit)
+    )
     icon = Icon('CenterWindowScript', image, menu=menu)
     logger.debug(f'Started system tray icon')
     icon.run()
